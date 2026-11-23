@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flowbound: Masters of Four</title>
+  
+  <!-- Asian Calligraphy & Modern Combat Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #09090b;
+      color: #f8fafc;
+      font-family: 'Rajdhani', sans-serif;
+      user-select: none;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Elegant Collapsible Controls Pill & Overlay (Zero Overlap with HUD or Flow Meter) */
+    #quick-controls-wrapper {
+      position: fixed;
+      bottom: 18px;
+      left: 18px;
+      z-index: 1200;
+      pointer-events: auto;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    #controls-toggle-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.25s ease;
+    }
+
+    #controls-toggle-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      color: #38bdf8;
+      border-color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+      transform: translateY(-1px);
+    }
+
+    #controls-toggle-btn .badge-key {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    #quick-controls-panel {
+      position: absolute;
+      bottom: 38px;
+      left: 0;
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 260px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 8px;
+      padding: 12px 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.85);
+      backdrop-filter: blur(12px);
+      animation: fadeInSlide 0.2s ease;
+    }
+
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #quick-controls-panel.active {
+      display: flex;
+    }
+
+    .panel-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      font-weight: 700;
+    }
+
+    .panel-close-btn {
+      cursor: pointer;
+      color: #94a3b8;
+      font-size: 14px;
+      padding: 0 4px;
+      transition: color 0.15s ease;
+    }
+
+    .panel-close-btn:hover {
+      color: #f87171;
+    }
+
+    #quick-controls-panel .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+
+    .key-hint {
+      color: #38bdf8;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.18);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      min-width: 44px;
+      text-align: center;
+      display: inline-block;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    #click-to-play-hint {
+      position: fixed;
+      top: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid #38bdf8;
+      border-radius: 20px;
+      padding: 6px 22px;
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #9be2f6;
+      z-index: 900;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="click-to-play-hint">⚔ CLICK TO ENGAGE COMBAT RETICLE ⚔</div>
+
+  <div id="quick-controls-wrapper">
+    <div id="quick-controls-panel">
+      <div class="panel-header-row">
+        <span>MARTIAL CONTROLS</span>
+        <span class="panel-close-btn" id="panel-close-x">×</span>
+      </div>
+      <div class="control-row"><span class="key-hint">WASD</span><span>Move & Strafe</span></div>
+      <div class="control-row"><span class="key-hint">LMB / J</span><span>3-Hit Strike Combo</span></div>
+      <div class="control-row"><span class="key-hint">RMB / K</span><span>Heavy Breaker Smash</span></div>
+      <div class="control-row"><span class="key-hint">F</span><span>Guard (Hold to Block)</span></div>
+      <div class="control-row"><span class="key-hint">SPACE</span><span>Jump & Vault</span></div>
+      <div class="control-row"><span class="key-hint">SHIFT</span><span>Ice Surf Skate</span></div>
+      <div class="control-row"><span class="key-hint">ALT / C</span><span>Evasive Dodge Slip</span></div>
+      <div class="control-row"><span class="key-hint">Q / U</span><span>Crystalline Ice Plank / Ramp</span></div>
+      <div class="control-row"><span class="key-hint">E / I / MMB</span><span>Elemental Chakrams</span></div>
+      <div class="control-row"><span class="key-hint">R / O</span><span>Ultimate Radial Art</span></div>
+      <div class="control-row"><span class="key-hint">TAB / L</span><span>Target Lock-On</span></div>
+      <div class="control-row"><span class="key-hint">H</span><span>Toggle Controls Guide</span></div>
+    </div>
+    <div id="controls-toggle-btn">
+      <span>⌨ CONTROLS</span>
+      <span class="badge-key">H</span>
+    </div>
+  </div>
+
+  <script>
+    const hint = document.getElementById('click-to-play-hint');
+    function dismissHint() {
+      if (hint && hint.style.opacity !== '0') {
+        hint.style.opacity = '0';
+        hint.style.transform = 'translateX(-50%) translateY(-10px)';
+        setTimeout(() => { if (hint) hint.style.display = 'none'; }, 450);
+      }
+    }
+    document.addEventListener('pointerlockchange', () => {
+      if (document.pointerLockElement) dismissHint();
+    });
+    window.addEventListener('mousedown', dismissHint);
+
+    // Controls Panel Toggle Logic
+    const toggleBtn = document.getElementById('controls-toggle-btn');
+    const controlsPanel = document.getElementById('quick-controls-panel');
+    const closeBtn = document.getElementById('panel-close-x');
+
+    function toggleControls() {
+      if (controlsPanel) controlsPanel.classList.toggle('active');
+    }
+
+    if (toggleBtn) toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleControls();
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (controlsPanel) controlsPanel.classList.remove('active');
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 'h' || e.key === 'H') && document.activeElement.tagName !== 'INPUT') {
+        toggleControls();
+      }
+    });
+  </script>
+
+  <script type="module" src="/src/client/main.js"></script>
+</body>
+</html>

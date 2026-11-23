@@ -1,0 +1,22 @@
+{
+  "name": "flowbound-masters-of-four",
+  "version": "1.0.0",
+  "description": "Flowbound: Masters of Four - 3D Elemental Arena Fighter",
+  "main": "src/server/GameServer.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host --port 3000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node src/server/GameServer.js",
+    "start": "node src/server/GameServer.js"
+  },
+  "dependencies": {
+    "three": "^0.182.0",
+    "wabt": "^1.0.39",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,5 @@
+docs/
+*.mp4
+*.log
+.git/
+src/native/
