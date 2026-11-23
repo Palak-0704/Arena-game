@@ -123,6 +123,7 @@ export class CharacterModel {
       const characterScene = gltfData.scene;
       characterScene.position.set(0, 0, 0);
       characterScene.rotation.set(0, 0, 0);
+      characterScene.updateMatrixWorld(true);
 
       // Auto-normalize bounding box to authentic human scale (~1.80m)
       const rawBox = new THREE.Box3().setFromObject(characterScene);
@@ -139,16 +140,11 @@ export class CharacterModel {
         scaleFactor = targetHeight / rawHeight;
       }
       characterScene.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      characterScene.updateMatrixWorld(true);
 
-      // Ground feet firmly flush at ground level y = 0 (Eliminates few inches hovering on Earth & Air)
+      // Ground feet firmly flush at ground level y = 0
       const alignedBox = new THREE.Box3().setFromObject(characterScene);
-      let footDropOffset = 0.0;
-      if (this.element === 'EARTH') footDropOffset = -0.18; // Lowers Earth Monk boots flush to floor/pedestal
-      else if (this.element === 'AIR') footDropOffset = -0.16; // Lowers Air Master boots flush to floor/pedestal
-      else if (this.element === 'FIRE') footDropOffset = -0.04;
-      else if (this.element === 'WATER') footDropOffset = -0.02;
-
-      characterScene.position.y = -alignedBox.min.y + footDropOffset;
+      characterScene.position.y = -alignedBox.min.y;
 
       // Load authentic high-resolution character textures
       const texLoader = new THREE.TextureLoader();
@@ -374,10 +370,11 @@ export class CharacterModel {
       if (!t || !t.name) return false;
       const lower = t.name.toLowerCase();
       if (lower.startsWith('armature.') || lower.startsWith('character.')) return false;
-      if (lower.includes('hips.position')) return false;
       if (lower.includes('.scale')) return false;
       return true;
     });
+
+    const qRest = new THREE.Quaternion(-0.7071068, 0, 0, 0.7071068);
 
     clip.tracks.forEach((track) => {
       if (!track || !track.name) return;
@@ -397,12 +394,10 @@ export class CharacterModel {
 
       track.name = `${nodeName}.${prop}`;
 
-      // CRITICAL FIX: For AIR master (Kachujin), hips rest orientation has a -90 deg X rotation
-      // that counteracts Armature's +90 deg X rotation in the rest pose.
-      // Mixamo FBX animations overwrite Hips.quaternion directly.
-      // Pre-multiplying by qRest = [-0.7071068, 0, 0, 0.7071068] keeps her standing completely upright on her feet!
-      if (this.element === 'AIR' && track.name.toLowerCase().includes('hips.quaternion')) {
-        const qRest = new THREE.Quaternion(-0.7071068, 0, 0, 0.7071068);
+      // CRITICAL FIX: For AIR (Kachujin) and FIRE (Samurai), the Armature node is authored with +90 deg X rotation.
+      // Retargeting standard Mixamo FBX animations requires pre-multiplying hips.quaternion by qRest (-90 deg X)
+      // so they stand completely upright on their feet without tilting forward!
+      if ((this.element === 'AIR' || this.element === 'FIRE') && track.name.toLowerCase().includes('hips.quaternion')) {
         for (let i = 0; i < track.values.length; i += 4) {
           const qAnim = new THREE.Quaternion(track.values[i], track.values[i+1], track.values[i+2], track.values[i+3]);
           const qResult = qRest.clone().multiply(qAnim);
@@ -410,6 +405,16 @@ export class CharacterModel {
           track.values[i+1] = qResult.y;
           track.values[i+2] = qResult.z;
           track.values[i+3] = qResult.w;
+        }
+      }
+
+      // Transform hips translation into Armature local coordinates (+90 deg X):
+      if ((this.element === 'AIR' || this.element === 'FIRE') && track.name.toLowerCase().includes('hips.position')) {
+        for (let i = 0; i < track.values.length; i += 3) {
+          const y = track.values[i+1];
+          const z = track.values[i+2];
+          track.values[i+1] = z;
+          track.values[i+2] = -y;
         }
       }
     });
@@ -817,17 +822,11 @@ export class CharacterModel {
       }
       if (this.surfBlend > 0.001) {
         this.applyIceSurfingPose(this.surfBlend);
-      } else {
-        // Fully restore hips and reset surfing pose back to neutral!
-        if (this.sockets.hips) {
-          if (this.restHipsPosition) this.sockets.hips.position.copy(this.restHipsPosition);
-          this.sockets.hips.rotation.set(0, 0, 0);
+      } else if (this.surfBlend > 0) {
+        this.surfBlend = 0;
+        if (this.sockets.hips && this.restHipsPosition) {
+          this.sockets.hips.position.copy(this.restHipsPosition);
         }
-        if (this.sockets.leftUpLeg) this.sockets.leftUpLeg.rotation.set(0, 0, 0);
-        if (this.sockets.leftLeg) this.sockets.leftLeg.rotation.set(0, 0, 0);
-        if (this.sockets.rightUpLeg) this.sockets.rightUpLeg.rotation.set(0, 0, 0);
-        if (this.sockets.rightLeg) this.sockets.rightLeg.rotation.set(0, 0, 0);
-        if (this.sockets.spine) this.sockets.spine.rotation.set(0, 0, 0);
       }
 
       // Guard blend
