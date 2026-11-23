@@ -396,6 +396,15 @@ export class HUDManager {
           flex-direction: column;
           align-items: center;
           position: relative;
+          cursor: pointer;
+          pointer-events: auto;
+          user-select: none;
+        }
+
+        .enso-slot:hover .enso-ring-bg {
+          transform: scale(1.12);
+          border-color: rgba(155, 226, 246, 0.85);
+          box-shadow: 0 0 16px rgba(56, 189, 248, 0.65);
         }
 
         .enso-ring-bg {

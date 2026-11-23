@@ -229,9 +229,37 @@ export class PlayerController {
       this.setGuardState(false);
     });
 
+    // Wire up HUD ability buttons for direct click & touch interaction
+    setTimeout(() => {
+      const btnQ = document.getElementById('slot-q');
+      if (btnQ) btnQ.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.castAbilityQ(); });
+
+      const btnE = document.getElementById('slot-e');
+      if (btnE) btnE.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.castAbilityE(); });
+
+      const btnR = document.getElementById('slot-r');
+      if (btnR) btnR.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.castAbilityR(); });
+
+      const btnLmb = document.getElementById('slot-lmb');
+      if (btnLmb) btnLmb.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.executeLightComboAttack(); });
+
+      const btnRmb = document.getElementById('slot-rmb');
+      if (btnRmb) btnRmb.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.executeHeavyBreakerStrike(); });
+
+      const btnShift = document.getElementById('slot-shift');
+      if (btnShift) btnShift.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        this.isSurfing = !this.isSurfing;
+        if (this.hudManager && this.hudManager.setSurfingActive) {
+          this.hudManager.setSurfingActive(this.isSurfing);
+        }
+      });
+    }, 150);
+
     this.lastPointerDownTime = 0;
     const onPointerAttack = (e) => {
       if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (e.target && e.target.closest && e.target.closest('.enso-slot')) return;
 
       const now = Date.now();
       if (now - this.lastPointerDownTime < 35) return;
@@ -616,19 +644,22 @@ export class PlayerController {
     else if (el === 'FIRE') abilityId = 'FLAME_SHIELD';
     else if (el === 'AIR') abilityId = 'GALE_BARRIER';
 
+    // ALL elements (EARTH, WATER, FIRE, AIR) spawn their authentic elemental launch plank!
+    this.activePlayerRamp = this.proceduralIce.spawnIceWall(spawnPos, forward, false, 'RAMP', el);
+    this.wasOnRamp = true;
+    this.currentRampInUse = this.activePlayerRamp;
+
+    // For Earth, also spawn accompanying rock guard shards around the launch base!
     if (el === 'EARTH' && this.earthTerraform) {
       const earthSpawn = spawnPos.clone().add(forward.clone().multiplyScalar(2.0));
       this.earthTerraform.spawnStoneGuard(earthSpawn, forward);
-    } else {
-      this.activePlayerRamp = this.proceduralIce.spawnIceWall(spawnPos, forward, false);
-      this.wasOnRamp = true;
-      this.currentRampInUse = this.activePlayerRamp;
-      // Fluid forward glide momentum straight in the face direction of the GLB model
-      this.velocity.x = forward.x * 11.5;
-      this.velocity.z = forward.z * 11.5;
-      this.velocity.y = 1.0;
-      this.isAirborne = false;
     }
+
+    // Fluid forward glide momentum straight in the face direction of the GLB model
+    this.velocity.x = forward.x * 11.5;
+    this.velocity.z = forward.z * 11.5;
+    this.velocity.y = 1.0;
+    this.isAirborne = false;
     this.soundEngine.playIceWallSpawn();
 
     if (this.onCastAbility) {

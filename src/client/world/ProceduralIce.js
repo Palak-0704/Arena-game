@@ -153,9 +153,9 @@ export class ProceduralIce {
     }
   }
 
-  // Spawn Authentic Crystalline Ice Plank / Launch Ramp (Ability Q)
-  // Faithful to reference video: Sleek arched crystalline launch plank with frost borders and mist plumes
-  spawnIceWall(position, forwardDir, isCurved = false, type = 'RAMP') {
+  // Spawn Authentic Elemental Launch Plank / Ramp (Ability Q)
+  // Faithful to reference video: Sleek arched crystalline launch plank with themed elemental materials
+  spawnIceWall(position, forwardDir, isCurved = false, type = 'RAMP', element = 'WATER') {
     const rampGroup = new THREE.Group();
     const length = 7.6;
     const height = 2.3;
@@ -164,24 +164,103 @@ export class ProceduralIce {
     const normDir = forwardDir.clone().normalize();
     const rightDir = new THREE.Vector3(-normDir.z, 0, normDir.x).normalize();
 
-    // 1. Crystalline Ice Surface Material (Works in all browsers & WebGL renderers)
-    const iceMat = new THREE.MeshStandardMaterial({
-      color: 0x93c5fd,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.65,
-      roughness: 0.12,
-      metalness: 0.25,
-      transparent: true,
-      opacity: 0.88,
-      side: THREE.DoubleSide
-    });
+    // Themed Elemental Materials:
+    // Earth: Volcanic Obsidian Basalt with Glowing Amber Veins
+    // Fire: Magma Slate with Fiery Crimson Glow
+    // Air: Ethereal Wind Jade with Golden Ribbons
+    // Water: Crystalline Sapphire Ice with Frost Rails
+    let surfaceMat, borderMat, baseDecalMat, mistColor;
 
-    // 2. Pure White Frost Edge Ribbon Material
-    const frostMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.95
-    });
+    if (element === 'EARTH') {
+      surfaceMat = new THREE.MeshStandardMaterial({
+        color: 0x27272a,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.45,
+        roughness: 0.85,
+        metalness: 0.25,
+        side: THREE.DoubleSide
+      });
+      borderMat = new THREE.MeshBasicMaterial({
+        color: 0xf59e0b,
+        transparent: true,
+        opacity: 0.95
+      });
+      baseDecalMat = new THREE.MeshBasicMaterial({
+        color: 0xb45309,
+        transparent: true,
+        opacity: 0.75,
+        side: THREE.DoubleSide
+      });
+      mistColor = 0xf59e0b;
+    } else if (element === 'FIRE') {
+      surfaceMat = new THREE.MeshStandardMaterial({
+        color: 0x450a0a,
+        emissive: 0xef4444,
+        emissiveIntensity: 0.65,
+        roughness: 0.35,
+        metalness: 0.2,
+        side: THREE.DoubleSide
+      });
+      borderMat = new THREE.MeshBasicMaterial({
+        color: 0xfde047,
+        transparent: true,
+        opacity: 0.95
+      });
+      baseDecalMat = new THREE.MeshBasicMaterial({
+        color: 0xd97706,
+        transparent: true,
+        opacity: 0.75,
+        side: THREE.DoubleSide
+      });
+      mistColor = 0xf97316;
+    } else if (element === 'AIR') {
+      surfaceMat = new THREE.MeshStandardMaterial({
+        color: 0xdcfce7,
+        emissive: 0x22c55e,
+        emissiveIntensity: 0.4,
+        roughness: 0.2,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+      });
+      borderMat = new THREE.MeshBasicMaterial({
+        color: 0xfef08a,
+        transparent: true,
+        opacity: 0.95
+      });
+      baseDecalMat = new THREE.MeshBasicMaterial({
+        color: 0x86efac,
+        transparent: true,
+        opacity: 0.65,
+        side: THREE.DoubleSide
+      });
+      mistColor = 0xbbf7d0;
+    } else {
+      // Default: Water Crystalline Ice
+      surfaceMat = new THREE.MeshStandardMaterial({
+        color: 0x93c5fd,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.65,
+        roughness: 0.12,
+        metalness: 0.25,
+        transparent: true,
+        opacity: 0.88,
+        side: THREE.DoubleSide
+      });
+      borderMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.95
+      });
+      baseDecalMat = new THREE.MeshBasicMaterial({
+        color: 0xbae6fd,
+        transparent: true,
+        opacity: 0.65,
+        side: THREE.DoubleSide
+      });
+      mistColor = 0xe0f2fe;
+    }
 
     const numSegments = 10;
     const vertices = [];
@@ -226,12 +305,12 @@ export class ProceduralIce {
     iceGeo.setIndex(indices);
     iceGeo.computeVertexNormals();
 
-    const iceMesh = new THREE.Mesh(iceGeo, iceMat);
+    const iceMesh = new THREE.Mesh(iceGeo, surfaceMat);
     iceMesh.castShadow = true;
     iceMesh.receiveShadow = true;
     rampGroup.add(iceMesh);
 
-    // 3. White Frost Edge Rails
+    // 3. Themed Elemental Edge Rails
     const buildBorderMesh = (borderVerts) => {
       const bVerts = [];
       const bIndices = [];
@@ -250,20 +329,14 @@ export class ProceduralIce {
       bGeo.setAttribute('position', new THREE.Float32BufferAttribute(bVerts, 3));
       bGeo.setIndex(bIndices);
       bGeo.computeVertexNormals();
-      return new THREE.Mesh(bGeo, frostMat);
+      return new THREE.Mesh(bGeo, borderMat);
     };
 
     rampGroup.add(buildBorderMesh(leftBorderVerts));
     rampGroup.add(buildBorderMesh(rightBorderVerts));
 
-    // 4. Base Frost Decal Ring
+    // 4. Base Decal Ring
     const baseDecalGeo = new THREE.RingGeometry(0.3, 1.4, 16);
-    const baseDecalMat = new THREE.MeshBasicMaterial({
-      color: 0xbae6fd,
-      transparent: true,
-      opacity: 0.65,
-      side: THREE.DoubleSide
-    });
     const baseDecal = new THREE.Mesh(baseDecalGeo, baseDecalMat);
     baseDecal.rotation.x = -Math.PI / 2;
     baseDecal.position.set(startPos.x, 0.02, startPos.z);
@@ -271,7 +344,7 @@ export class ProceduralIce {
 
     this.scene.add(rampGroup);
 
-    // 5. Cold Mist Particle Plumes
+    // 5. Themed Particle Plumes
     const mistPlumes = [];
     for (let m = 0; m < 5; m++) {
       const mt = (m + 1) / 6;
@@ -280,7 +353,7 @@ export class ProceduralIce {
 
       const mGeo = new THREE.SphereGeometry(0.22, 8, 8);
       const mMat = new THREE.MeshBasicMaterial({
-        color: 0xe0f2fe,
+        color: mistColor,
         transparent: true,
         opacity: 0.55
       });
@@ -292,8 +365,9 @@ export class ProceduralIce {
 
     const rampActor = {
       mesh: rampGroup,
-      material: iceMat,
-      frostMat,
+      element,
+      material: surfaceMat,
+      frostMat: borderMat,
       mistPlumes,
       createdAt: Date.now(),
       lifetime: 7.5,
@@ -428,8 +502,8 @@ export class ProceduralIce {
     return null;
   }
 
-  // Dynamic multi-point crystalline ice shatter explosion
-  spawnRampShatterBurst(collider) {
+  // Dynamic multi-point elemental shatter explosion
+  spawnRampShatterBurst(collider, element = 'WATER') {
     if (!this.scene || !collider) return;
     const points = [];
     if (collider.start) points.push(collider.start);
@@ -440,8 +514,13 @@ export class ProceduralIce {
       points.push(mid);
     }
 
+    let shardColor = 0xbae6fd;
+    if (element === 'EARTH') shardColor = 0xd97706;
+    else if (element === 'FIRE') shardColor = 0xef4444;
+    else if (element === 'AIR') shardColor = 0x86efac;
+
     const frostMat = new THREE.MeshBasicMaterial({
-      color: 0xbae6fd,
+      color: shardColor,
       transparent: true,
       opacity: 0.85
     });
@@ -487,7 +566,7 @@ export class ProceduralIce {
     }
 
     if (rampActor.collider) {
-      this.spawnRampShatterBurst(rampActor.collider);
+      this.spawnRampShatterBurst(rampActor.collider, rampActor.element || 'WATER');
     }
 
     if (rampActor.mesh) {
