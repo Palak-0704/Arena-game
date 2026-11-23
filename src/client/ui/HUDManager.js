@@ -38,12 +38,12 @@ export class HUDManager {
         /* Top Symmetrical Match Combat Header */
         .match-header {
           position: absolute;
-          top: 18px;
+          top: max(10px, env(safe-area-inset-top, 12px));
           left: 50%;
           transform: translateX(-50%);
           display: flex;
           align-items: center;
-          gap: 20px;
+          gap: 16px;
           width: 94%;
           max-width: 1100px;
           justify-content: space-between;
@@ -187,7 +187,7 @@ export class HUDManager {
           .match-header {
             width: 96%;
             gap: 12px;
-            top: 12px;
+            top: max(8px, env(safe-area-inset-top, 8px));
           }
           .header-center-box {
             padding: 4px 10px;
@@ -206,6 +206,103 @@ export class HUDManager {
           }
           .hp-shell {
             height: 12px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .match-header {
+            width: 98%;
+            gap: 8px;
+            top: max(6px, env(safe-area-inset-top, 6px));
+          }
+          .header-center-box {
+            padding: 4px 8px;
+            min-width: 105px;
+          }
+          .round-title {
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            line-height: 1.3;
+          }
+          .diamonds-row {
+            gap: 8px;
+          }
+          .diamond {
+            width: 8px;
+            height: 8px;
+          }
+          .vs-mini-badge {
+            font-size: 9px;
+          }
+          .hud-pause-btn {
+            font-size: 9px;
+            padding: 3px 8px;
+            letter-spacing: 1px;
+            margin-top: 3px;
+          }
+          .fighter-meta {
+            font-size: 10px;
+            gap: 4px;
+          }
+          .fighter-hud-name {
+            max-width: 85px;
+            font-size: 10px;
+          }
+          .fighter-hud-badge {
+            font-size: 8px;
+            padding: 1px 4px;
+          }
+          .hp-shell {
+            height: 10px;
+          }
+          .poise-shell {
+            height: 4px;
+          }
+          #bottom-bar-wrapper {
+            bottom: 12px;
+            transform: translateX(-50%) scale(0.85);
+            transform-origin: bottom center;
+          }
+          #quick-controls-wrapper {
+            bottom: 12px;
+            left: 10px;
+            transform: scale(0.85);
+            transform-origin: bottom left;
+          }
+          #flow-meter-container {
+            bottom: 12px;
+            left: 10px;
+            transform: scale(0.8);
+            transform-origin: bottom left;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .match-header {
+            gap: 4px;
+          }
+          .header-center-box {
+            min-width: 85px;
+            padding: 3px 6px;
+          }
+          .fighter-hud-name {
+            max-width: 65px;
+            font-size: 9px;
+          }
+          #bottom-bar-wrapper {
+            bottom: 8px;
+            transform: translateX(-50%) scale(0.72);
+          }
+        }
+
+        @media (min-width: 2000px) {
+          .match-header {
+            max-width: 1350px;
+            top: 24px;
+          }
+          #bottom-bar-wrapper {
+            bottom: 30px;
+            transform: translateX(-50%) scale(1.15);
           }
         }
 
@@ -242,11 +339,13 @@ export class HUDManager {
         }
 
         .round-title {
-          margin-top: 4px;
+          margin-top: 3px;
           font-size: 11px;
-          letter-spacing: 2px;
+          line-height: 1.35;
+          letter-spacing: 1.5px;
           color: #e2e8f0;
           font-weight: bold;
+          text-align: center;
         }
 
         /* In-Arena Countdown Overlay */
@@ -1046,7 +1145,7 @@ export class HUDManager {
   updateRoundHeader(round, playerWins, botWins, level = 1, botTier = 'WARRIOR') {
     const titleEl = document.getElementById('round-title');
     if (titleEl) {
-      titleEl.innerHTML = `LEVEL ${level} · ROUND ${round} (BEST OF 3)<div style="font-size: 9px; color: #f59e0b; letter-spacing: 1.5px; margin-top: 2px;">[RIVAL: ${botTier}]</div>`;
+      titleEl.innerHTML = `<div>LEVEL ${level} · ROUND ${round} (BEST OF 3)</div><div style="font-size: 9px; color: #f59e0b; letter-spacing: 1.5px; margin-top: 3px; font-weight: 700;">[RIVAL: ${botTier}]</div>`;
     }
 
     const playerDias = document.getElementById('player-diamonds')?.children;

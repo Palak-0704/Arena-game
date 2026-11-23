@@ -645,15 +645,10 @@ export class PlayerController {
     else if (el === 'AIR') abilityId = 'GALE_BARRIER';
 
     // ALL elements (EARTH, WATER, FIRE, AIR) spawn their authentic elemental launch plank!
+    // For Earth, spawns the clean obsidian rock launch plank without any unnecessary cone clutter
     this.activePlayerRamp = this.proceduralIce.spawnIceWall(spawnPos, forward, false, 'RAMP', el);
     this.wasOnRamp = true;
     this.currentRampInUse = this.activePlayerRamp;
-
-    // For Earth, also spawn accompanying rock guard shards around the launch base!
-    if (el === 'EARTH' && this.earthTerraform) {
-      const earthSpawn = spawnPos.clone().add(forward.clone().multiplyScalar(2.0));
-      this.earthTerraform.spawnStoneGuard(earthSpawn, forward);
-    }
 
     // Fluid forward glide momentum straight in the face direction of the GLB model
     this.velocity.x = forward.x * 11.5;
@@ -1321,6 +1316,12 @@ export class PlayerController {
     if (this.position.y > MAX_HEIGHT_CAP) {
       this.position.y = MAX_HEIGHT_CAP;
       if (this.velocity.y > 0) this.velocity.y = 0;
+    }
+
+    // Absolute floor plane protection - NEVER allow character position to clip beneath arena floor!
+    if (this.position.y < 0) {
+      this.position.y = 0;
+      if (this.velocity.y < 0) this.velocity.y = 0;
     }
 
     // Update 3D Character Model Visuals

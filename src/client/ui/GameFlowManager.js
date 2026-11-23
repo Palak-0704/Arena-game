@@ -380,9 +380,60 @@ export class GameFlowManager {
         animation: pulseText 0.8s ease-in-out infinite alternate;
       }
 
-      @keyframes pulseText {
-        0% { transform: scale(0.95); opacity: 0.85; }
-        100% { transform: scale(1.05); opacity: 1; }
+      @media (max-width: 768px) {
+        .landing-crest {
+          width: 90px;
+          height: 90px;
+          margin-bottom: 16px;
+        }
+        .crest-aurora {
+          width: 130px;
+          height: 130px;
+        }
+        .crest-ring-outer {
+          width: 85px;
+          height: 85px;
+        }
+        .crest-ring-inner {
+          width: 68px;
+          height: 68px;
+        }
+        .crest-yinyang {
+          font-size: 38px;
+        }
+        .landing-title {
+          font-size: 38px;
+          letter-spacing: 5px;
+        }
+        .landing-subtitle {
+          font-size: 13px;
+          letter-spacing: 4px;
+        }
+        .landing-tagline {
+          font-size: 10px;
+          letter-spacing: 2px;
+          margin-bottom: 28px;
+        }
+        .flow-btn-primary {
+          padding: 13px 32px;
+          font-size: 15px;
+          letter-spacing: 2px;
+        }
+        .level-cards-container {
+          flex-direction: column !important;
+          max-height: 65vh;
+          overflow-y: auto;
+          gap: 16px !important;
+          width: 92vw !important;
+        }
+        .level-card {
+          width: 100% !important;
+          padding: 16px 20px !important;
+        }
+        .vs-container {
+          gap: 20px;
+          flex-direction: column;
+        }
       }
     `;
     document.head.appendChild(style);

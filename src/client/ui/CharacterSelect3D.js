@@ -337,6 +337,44 @@ export class CharacterSelect3D {
         .cs-nav-right { right: 330px; }
       }
 
+      @media (max-width: 900px) {
+        .cs-header {
+          top: max(8px, env(safe-area-inset-top, 8px));
+        }
+        .cs-main-title {
+          font-size: 22px;
+          letter-spacing: 2px;
+        }
+        .cs-sub-title {
+          font-size: 10px;
+          letter-spacing: 1.5px;
+        }
+        .cs-nav-btn {
+          width: 44px;
+          height: 44px;
+          font-size: 20px;
+        }
+        .cs-nav-left { left: 12px; }
+        .cs-nav-right { right: 12px; }
+        .cs-profile-card {
+          right: 12px !important;
+          left: 12px !important;
+          top: auto !important;
+          bottom: 12px !important;
+          width: auto !important;
+          max-height: 45vh !important;
+          padding: 12px 14px !important;
+        }
+        .cs-callsign-box {
+          margin-bottom: 8px;
+          padding: 6px 10px;
+        }
+        .cs-confirm-btn {
+          padding: 10px 16px;
+          font-size: 14px;
+        }
+      }
+
       .cs-quick-nav-row {
         display: flex;
         justify-content: space-between;

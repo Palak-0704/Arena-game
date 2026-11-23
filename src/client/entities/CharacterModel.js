@@ -247,6 +247,7 @@ export class CharacterModel {
             this.sockets.rightFoot = child;
           } else if (lower.includes('hips')) {
             this.sockets.hips = child;
+            this.restHipsPosition = child.position.clone();
           } else if (lower.includes('spine1')) {
             this.sockets.spine1 = child;
           } else if (lower.includes('spine') && !lower.includes('1') && !lower.includes('2')) {
@@ -814,8 +815,19 @@ export class CharacterModel {
       if (this.iceSkateMesh) {
         this.iceSkateMesh.visible = (this.surfBlend > 0.05);
       }
-      if (this.surfBlend > 0.05) {
+      if (this.surfBlend > 0.001) {
         this.applyIceSurfingPose(this.surfBlend);
+      } else {
+        // Fully restore hips and reset surfing pose back to neutral!
+        if (this.sockets.hips) {
+          if (this.restHipsPosition) this.sockets.hips.position.copy(this.restHipsPosition);
+          this.sockets.hips.rotation.set(0, 0, 0);
+        }
+        if (this.sockets.leftUpLeg) this.sockets.leftUpLeg.rotation.set(0, 0, 0);
+        if (this.sockets.leftLeg) this.sockets.leftLeg.rotation.set(0, 0, 0);
+        if (this.sockets.rightUpLeg) this.sockets.rightUpLeg.rotation.set(0, 0, 0);
+        if (this.sockets.rightLeg) this.sockets.rightLeg.rotation.set(0, 0, 0);
+        if (this.sockets.spine) this.sockets.spine.rotation.set(0, 0, 0);
       }
 
       // Guard blend
@@ -860,9 +872,14 @@ export class CharacterModel {
   // Procedural stance adjustments for Absolver-quality feel
   applyIceSurfingPose(blend) {
     if (this.sockets.hips) {
-      this.sockets.hips.position.y = -0.22 * blend;
-      this.sockets.hips.rotation.y = 0.55 * blend;
-      this.sockets.hips.rotation.x = 0.12 * blend;
+      if (!this.restHipsPosition) {
+        this.restHipsPosition = this.sockets.hips.position.clone();
+      }
+      // Keep hips strictly on their natural vertical rest height (micro-dip only, NEVER sink into floor!)
+      this.sockets.hips.position.copy(this.restHipsPosition);
+      this.sockets.hips.position.y -= 0.04 * blend;
+      this.sockets.hips.rotation.y = 0.45 * blend;
+      this.sockets.hips.rotation.x = 0.08 * blend;
     }
     if (this.sockets.leftUpLeg) {
       this.sockets.leftUpLeg.rotation.x = -0.42 * blend;
