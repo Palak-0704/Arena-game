@@ -493,7 +493,7 @@ export class RoomManager {
         const dx = bot.x - humanPlayer.x;
         const dz = bot.z - humanPlayer.z;
         const dist = Math.hypot(dx, dz);
-        const MIN_DIST = 1.35;
+        const MIN_DIST = 1.45;
         if (dist < MIN_DIST && dist > 0.001) {
           const overlap = MIN_DIST - dist;
           const nx = dx / dist;
@@ -502,6 +502,18 @@ export class RoomManager {
           humanPlayer.z -= nz * (overlap * 0.5);
           bot.x += nx * (overlap * 0.5);
           bot.z += nz * (overlap * 0.5);
+        }
+      }
+
+      // Hard Arena Perimeter Clamp for all players
+      for (const p of this.players.values()) {
+        const d = Math.hypot(p.x, p.z);
+        if (d > 25.4) {
+          const s = 25.4 / d;
+          p.x *= s;
+          p.z *= s;
+          if (p.vx) p.vx *= 0.2;
+          if (p.vz) p.vz *= 0.2;
         }
       }
 
@@ -518,7 +530,7 @@ export class RoomManager {
           if (id === proj.casterId || target.isDead) continue;
 
           const dist = Math.hypot(target.x - proj.x, target.z - proj.z);
-          if (dist < (proj.radius + 0.8) && Math.abs(target.y - proj.y) < 2.2) {
+          if (dist < (proj.radius + 1.0) && Math.abs(target.y - proj.y) < 2.5) {
             // Direct physical projectile impact!
             const attacker = this.players.get(proj.casterId) || { id: proj.casterId, name: 'Attacker' };
             const hits = this.combatEngine.applyDirectHit(attacker, target, {

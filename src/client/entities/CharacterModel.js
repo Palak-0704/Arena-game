@@ -394,6 +394,20 @@ export class CharacterModel {
 
       track.name = `${nodeName}.${prop}`;
 
+      // CRITICAL: Strip horizontal root motion translation (X and Z) from hips.position
+      // Mixamo animations (such as Fast_Run, Forward_Jump, Drop_Kick) have linear forward root motion
+      // authored into the hips position track (~2.6m forward translation). In a kinematic character controller,
+      // this causes the character to slide forward and snap back repeatedly on loop!
+      // We anchor X to initX and Z to initZ while preserving the authentic vertical Y bounce.
+      if (track.name.toLowerCase().includes('hips.position')) {
+        const initX = track.values[0];
+        const initZ = track.values[2];
+        for (let i = 0; i < track.values.length; i += 3) {
+          track.values[i] = initX;
+          track.values[i + 2] = initZ;
+        }
+      }
+
       // CRITICAL FIX: For AIR (Kachujin) and FIRE (Samurai), the Armature node is authored with +90 deg X rotation.
       // Retargeting standard Mixamo FBX animations requires pre-multiplying hips.quaternion by qRest (-90 deg X)
       // so they stand completely upright on their feet without tilting forward!
@@ -856,8 +870,12 @@ export class CharacterModel {
         }
       } else if (speed > 0.6) {
         this.currentStance = 'RUN';
-        if (this.actions.run && this.currentActionName !== 'run') {
-          this.playAction('run', 0.18);
+        if (this.actions.run) {
+          if (this.currentActionName !== 'run') {
+            this.playAction('run', 0.18);
+          }
+          const targetScale = Math.min(1.35, Math.max(0.75, speed / 5.2));
+          this.actions.run.timeScale = THREE.MathUtils.lerp(this.actions.run.timeScale || 1.0, targetScale, dt * 10.0);
         }
       } else {
         this.currentStance = 'IDLE';

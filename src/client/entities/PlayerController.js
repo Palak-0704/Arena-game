@@ -314,15 +314,15 @@ export class PlayerController {
       this.proceduralIce.removeRamp(this.currentRampInUse);
       this.currentRampInUse = null;
     }
-    const rampCheck = this.proceduralIce.checkRampCollision(this.position);
+    const rampCheck = this.proceduralIce.checkRampCollision(this.position, this.id);
     if (rampCheck && rampCheck.onRamp) {
       this.proceduralIce.removeRamp(rampCheck.ramp);
     }
-    // Also remove any ramp within jump proximity (within 8 meters)
+    // Also remove player's own ramp within jump proximity (within 8 meters)
     if (this.proceduralIce && this.proceduralIce.activeRamps) {
       for (let i = this.proceduralIce.activeRamps.length - 1; i >= 0; i--) {
         const r = this.proceduralIce.activeRamps[i];
-        if (r && r.collider) {
+        if (r && r.collider && (!r.ownerId || r.ownerId === this.id)) {
           const dStart = this.position.distanceTo(r.collider.start);
           const dEnd = this.position.distanceTo(r.collider.end);
           if (dStart < 8.0 || dEnd < 8.0) {
@@ -507,16 +507,23 @@ export class PlayerController {
 
     // Send Attack Hitbox strictly in the face direction of the GLB model
     if (this.onCastAbility) {
+      const el = this.model?.element || 'WATER';
+      let abilityId = 'WATER_WHIP';
+      if (el === 'EARTH') abilityId = 'BOULDER_STRIKE';
+      else if (el === 'FIRE') abilityId = 'FIRE_STRIKE';
+      else if (el === 'AIR') abilityId = 'AIR_PALM';
+
       this.onCastAbility({
         casterId: this.id,
-        abilityId: 'WATER_WHIP',
+        abilityId,
+        element: el,
         type: 'MELEE_SWEEP',
         step: this.comboStep,
         damage: hitDamage,
         poiseDamage: hitDamage * 1.2,
         isHeavy: false,
         isGoldLink,
-        range: 4.8,
+        range: 5.2,
         direction: { x: forward.x, y: 0, z: forward.z },
         origin: { x: this.position.x, y: this.position.y + 1.1, z: this.position.z }
       });
@@ -646,7 +653,7 @@ export class PlayerController {
 
     // ALL elements (EARTH, WATER, FIRE, AIR) spawn their authentic elemental launch plank!
     // For Earth, spawns the clean obsidian rock launch plank without any unnecessary cone clutter
-    this.activePlayerRamp = this.proceduralIce.spawnIceWall(spawnPos, forward, false, 'RAMP', el);
+    this.activePlayerRamp = this.proceduralIce.spawnIceWall(spawnPos, forward, false, 'RAMP', el, this.id);
     this.wasOnRamp = true;
     this.currentRampInUse = this.activePlayerRamp;
 
@@ -1083,13 +1090,33 @@ export class PlayerController {
     if (this.eCooldown > 0) this.eCooldown -= dt;
     if (this.rCooldown > 0) this.rCooldown -= dt;
 
+    // Dynamic Camera Direction Vectors
+    const forwardCam = this.cameraController.getForwardDirection();
+    const rightCam = this.cameraController.getRightDirection();
+
     // Ice Surfing State (Holding Shift unlocks free-sprint carving)
     const wantsSurf = !!(this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this.keys['Shift']);
     if (wantsSurf && !this.isSurfing) {
       this.isSurfing = true;
       this.setGuardState(false);
-      const forward = this.cameraController.getForwardDirection();
-      this.proceduralIce.startSurfing(this.position, forward);
+
+      // Determine initial surf direction:
+      // If user is actively pressing directional keys (e.g. A for left, D for right, S for back, W for forward),
+      // launch directly in that direction relative to camera.
+      // Otherwise, surf strictly in the direction the character model is currently facing!
+      let initialSurfDir = new THREE.Vector3(0, 0, 0);
+      if (this.isForward()) initialSurfDir.add(forwardCam);
+      if (this.isBackward()) initialSurfDir.sub(forwardCam);
+      if (this.isRight()) initialSurfDir.add(rightCam);
+      if (this.isLeft()) initialSurfDir.sub(rightCam);
+
+      if (initialSurfDir.lengthSq() > 0.001) {
+        initialSurfDir.normalize();
+      } else {
+        initialSurfDir = this.getGlbFaceDirection();
+      }
+
+      this.proceduralIce.startSurfing(this.position, initialSurfDir);
       this.cameraController.setSurfingFOV(true);
       this.soundEngine.startSurfAudio();
       if (this.hudManager && this.hudManager.setSurfingActive) {
@@ -1113,10 +1140,6 @@ export class PlayerController {
       return;
     }
 
-    // Absolver Dynamic Movement & Orbital Strafing
-    const forwardCam = this.cameraController.getForwardDirection();
-    const rightCam = this.cameraController.getRightDirection();
-
     let oppPos = null;
     let distToOpp = 999;
     let isOppDead = false;
@@ -1127,19 +1150,33 @@ export class PlayerController {
     }
 
     if (this.isSurfing) {
-      // Ice Surfing Carving Controls (Zero-allocation)
-      this._scratchSurf.copy(forwardCam);
-      if (this.isLeft()) this._scratchSurf.addScaledVector(rightCam, -0.65);
-      if (this.isRight()) this._scratchSurf.addScaledVector(rightCam, 0.65);
-      if (this.isBackward()) this._scratchSurf.multiplyScalar(0.5);
-      this._scratchSurf.normalize();
+      // Ice Surfing Steering & Carving Controls
+      this._scratchSurf.set(0, 0, 0);
+      if (this.isForward()) this._scratchSurf.add(forwardCam);
+      if (this.isBackward()) this._scratchSurf.sub(forwardCam);
+      if (this.isRight()) this._scratchSurf.add(rightCam);
+      if (this.isLeft()) this._scratchSurf.sub(rightCam);
+
+      if (this._scratchSurf.lengthSq() > 0.001) {
+        // User actively carving with movement keys (A = left, D = right, S = back, W = forward)
+        this._scratchSurf.normalize();
+      } else {
+        // No movement keys held: surf strictly in current face direction of the 3D model!
+        // If character faces left, it surfs directly to the left!
+        this._scratchSurf.copy(this.getGlbFaceDirection());
+      }
 
       const surfSpeed = MOVEMENT_CONSTANTS.ICE_SURF_BASE;
-      this.velocity.x += (this._scratchSurf.x * surfSpeed - this.velocity.x) * (dt * 6.5);
-      this.velocity.z += (this._scratchSurf.z * surfSpeed - this.velocity.z) * (dt * 6.5);
+      this.velocity.x += (this._scratchSurf.x * surfSpeed - this.velocity.x) * (dt * 7.5);
+      this.velocity.z += (this._scratchSurf.z * surfSpeed - this.velocity.z) * (dt * 7.5);
 
-      const targetAngle = Math.atan2(this.velocity.x, this.velocity.z);
-      this.model.group.rotation.y = targetAngle;
+      if (Math.hypot(this.velocity.x, this.velocity.z) > 0.5) {
+        const targetAngle = Math.atan2(this.velocity.x, this.velocity.z);
+        let diff = targetAngle - this.model.group.rotation.y;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        this.model.group.rotation.y += diff * Math.min(1.0, dt * 16.0);
+      }
 
     } else if (this.isDashing) {
       // Evasive dodge slip momentum maintained
@@ -1193,21 +1230,27 @@ export class PlayerController {
         const dx = this.position.x - oppPos.x;
         const dz = this.position.z - oppPos.z;
         const dist = Math.hypot(dx, dz);
-        const MIN_DIST = 1.35; // combined physical fighter capsule radius (0.67m each)
+        const MIN_DIST = 1.45; // strictly match server MIN_DIST (1.45m)
 
-        if (dist < MIN_DIST && dist > 0.001) {
+        if (dist < MIN_DIST && dist > 0.0001) {
           const overlap = MIN_DIST - dist;
           const nx = dx / dist;
           const nz = dz / dist;
 
           // Push player out of opponent's body
-          this.position.x += nx * overlap;
-          this.position.z += nz * overlap;
+          this.position.x += nx * (overlap * 0.75);
+          this.position.z += nz * (overlap * 0.75);
+
+          // Mutual pushback on opponent interpolated position
+          if (this.targetOpponent.currentPos) {
+            this.targetOpponent.currentPos.x -= nx * (overlap * 0.25);
+            this.targetOpponent.currentPos.z -= nz * (overlap * 0.25);
+          }
 
           // Relative inward velocity check
           const velAlongNormal = this.velocity.x * (-nx) + this.velocity.z * (-nz);
           if (velAlongNormal > 0) {
-            // Cancel penetration velocity
+            // Cancel penetration velocity completely
             this.velocity.x -= (-nx) * velAlongNormal;
             this.velocity.z -= (-nz) * velAlongNormal;
 
@@ -1225,8 +1268,20 @@ export class PlayerController {
       }
     }
 
-    // Ice Ramp Collision & Apex Launch
-    const rampCheck = this.proceduralIce.checkRampCollision(this.position);
+    // Opponent Ramp Obstacle Collision: Cannot climb opponent's ramp; acts as solid impenetrable barrier
+    const rampObstacle = this.proceduralIce.checkRampObstacleCollision(this.position, 0.65, this.id);
+    if (rampObstacle && rampObstacle.collision) {
+      this.position.x += rampObstacle.pushX;
+      this.position.z += rampObstacle.pushZ;
+      const vDot = this.velocity.x * rampObstacle.pushX + this.velocity.z * rampObstacle.pushZ;
+      if (vDot < 0) {
+        this.velocity.x = 0;
+        this.velocity.z = 0;
+      }
+    }
+
+    // Ice Ramp Collision & Apex Launch (Caster's own ramp only)
+    const rampCheck = this.proceduralIce.checkRampCollision(this.position, this.id);
     if (rampCheck && rampCheck.onRamp) {
       this.position.y = rampCheck.surfaceY;
       this.isAirborne = false;
@@ -1265,9 +1320,13 @@ export class PlayerController {
         }
       }
 
-      this.proceduralIce.spawnSurfFrostParticles(this.position, forwardCam);
+      const surfTravelDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z);
+      if (surfTravelDir.lengthSq() > 0.001) surfTravelDir.normalize();
+      else surfTravelDir.copy(this.getGlbFaceDirection());
+
+      this.proceduralIce.spawnSurfFrostParticles(this.position, surfTravelDir);
       if (this.isSurfing) {
-        this.proceduralIce.addSurfingSegment(this.position, forwardCam);
+        this.proceduralIce.addSurfingSegment(this.position, surfTravelDir);
       }
     } else {
       if (this.wasOnRamp && this.currentRampInUse) {
@@ -1292,16 +1351,46 @@ export class PlayerController {
         this.isAirborne = false;
 
         if (this.isSurfing) {
-          this.proceduralIce.spawnSurfFrostParticles(this.position, forwardCam);
-          this.proceduralIce.addSurfingSegment(this.position, forwardCam);
+          const surfTravelDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z);
+          if (surfTravelDir.lengthSq() > 0.001) surfTravelDir.normalize();
+          else surfTravelDir.copy(this.getGlbFaceDirection());
+
+          this.proceduralIce.spawnSurfFrostParticles(this.position, surfTravelDir);
+          this.proceduralIce.addSurfingSegment(this.position, surfTravelDir);
         }
       } else {
         this.isAirborne = true;
       }
     }
 
+    // Strict Physical Collision with Arena Pillars, Columns, and Spires
+    if (arenaColliders && Array.isArray(arenaColliders)) {
+      const charRadius = 0.65;
+      for (const col of arenaColliders) {
+        if (col.type === 'CYLINDER') {
+          const cdx = this.position.x - col.x;
+          const cdz = this.position.z - col.z;
+          const cdist = Math.hypot(cdx, cdz);
+          const minColDist = (col.radius || 1.0) + charRadius;
+          if (cdist < minColDist && cdist > 0.0001) {
+            const overlap = minColDist - cdist;
+            const cnx = cdx / cdist;
+            const cnz = cdz / cdist;
+            this.position.x += cnx * overlap;
+            this.position.z += cnz * overlap;
+
+            const inVel = this.velocity.x * (-cnx) + this.velocity.z * (-cnz);
+            if (inVel > 0) {
+              this.velocity.x -= (-cnx) * inVel;
+              this.velocity.z -= (-cnz) * inVel;
+            }
+          }
+        }
+      }
+    }
+
     // Colosseum & Glacial Arena Boundary & Hard Ceiling Clamp
-    const MAX_ARENA_RADIUS = 26.2;
+    const MAX_ARENA_RADIUS = 25.4;
     const horizDist = Math.hypot(this.position.x, this.position.z);
     if (horizDist > MAX_ARENA_RADIUS) {
       const scale = MAX_ARENA_RADIUS / horizDist;

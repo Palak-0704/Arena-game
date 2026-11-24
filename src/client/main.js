@@ -553,11 +553,8 @@ class FlowboundGame {
         // Already spawned instantaneously in PlayerController on keypress for 0ms responsiveness
         return;
       }
-      if (ability.element === 'EARTH' || ability.abilityId === 'STONE_GUARD') {
-        this.earthTerraform.spawnStoneGuard(orig, dir);
-      } else {
-        this.proceduralIce.spawnIceWall(orig, dir, false);
-      }
+      const el = ability.element || (ability.abilityId === 'STONE_GUARD' ? 'EARTH' : 'WATER');
+      this.proceduralIce.spawnIceWall(orig, dir, false, 'RAMP', el, ability.casterId);
       this.soundEngine.playIceWallSpawn();
     } else if (ability.abilityId === 'SEISMIC_SNARE') {
       this.earthTerraform.spawnFissure(orig, dir, ability.length || 18.0);

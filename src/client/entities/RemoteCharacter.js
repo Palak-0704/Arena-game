@@ -74,6 +74,7 @@ export class RemoteCharacter {
     this.poise = state.poise;
     this.maxPoise = state.maxPoise || 180;
     this.isDead = !!state.isDead;
+    this.isSurfing = !!state.isSurfing;
     this.model.setGuarding(!!state.isGuarding);
 
     // Update Overhead Bar
@@ -99,6 +100,9 @@ export class RemoteCharacter {
   update(dt, camera) {
     if (this.isDead) return;
 
+    const prevX = this.currentPos.x;
+    const prevZ = this.currentPos.z;
+
     // Smooth position interpolation
     this.currentPos.lerp(this.targetPos, dt * 14.0);
     this.model.group.position.copy(this.currentPos);
@@ -109,8 +113,9 @@ export class RemoteCharacter {
     while (diff > Math.PI) diff -= Math.PI * 2;
     this.model.group.rotation.y += diff * Math.min(1.0, dt * 12.0);
 
-    const speed = this.currentPos.distanceTo(this.targetPos) / Math.max(dt, 0.001);
-    this.model.updateAnimation(dt, speed, false, this.currentPos.y > 0.3);
+    const moveDist = Math.hypot(this.currentPos.x - prevX, this.currentPos.z - prevZ);
+    const speed = moveDist / Math.max(dt, 0.001);
+    this.model.updateAnimation(dt, speed, !!this.isSurfing, this.currentPos.y > 0.3);
 
     // Project Overhead UI to screen space
     if (camera && this.overheadContainer) {

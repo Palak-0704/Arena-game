@@ -30,21 +30,27 @@ export class CombatEngine {
 
       if (attackData.type === 'MELEE_SWEEP') {
         // Melee swing: Check distance AND ensure target is in front of attacker
-        const toTargetX = target.x - attacker.x;
-        const toTargetZ = target.z - attacker.z;
+        const attackerX = (attackData.origin && typeof attackData.origin.x === 'number') ? attackData.origin.x : attacker.x;
+        const attackerZ = (attackData.origin && typeof attackData.origin.z === 'number') ? attackData.origin.z : attacker.z;
+        const toTargetX = target.x - attackerX;
+        const toTargetZ = target.z - attackerZ;
         const distSq = toTargetX * toTargetX + toTargetZ * toTargetZ;
 
-        if (distSq <= attackData.range * attackData.range && distSq > 0.04) {
+        // Allow point-blank hits (never fail if distSq < 0.04) and check generous melee range
+        const maxRange = attackData.range || 5.0;
+        if (distSq <= maxRange * maxRange) {
           const dist = Math.sqrt(distSq);
           // Attacker forward facing direction
           const forward = attackData.direction || {
             x: Math.sin(attacker.yaw || 0),
             z: Math.cos(attacker.yaw || 0)
           };
-          const dot = (toTargetX / dist) * forward.x + (toTargetZ / dist) * forward.z;
+          // Since physical character capsules touch at ~1.45m (MIN_DIST), any distance up to 1.75m is point-blank touch range
+          // At point-blank / close-quarters (dist <= 1.75m), grant full hit coverage; otherwise check forward arc
+          const dot = dist <= 1.75 ? 1.0 : ((toTargetX / dist) * forward.x + (toTargetZ / dist) * forward.z);
 
-          // Target must be within forward frontal arc (~110 degrees)
-          if (dot > 0.25) {
+          // Target must be within generous forward frontal arc
+          if (dot >= 0.0) {
             hitResult = { hit: true, hitPoint: { x: target.x, y: target.y + 1.1, z: target.z } };
           }
         }
@@ -58,7 +64,7 @@ export class CombatEngine {
         );
       } else if (attackData.type === 'AOE_SPHERE') {
         const distSq = PhysicsMath.distSq(attackData.center, target);
-        if (distSq <= attackData.radius * attackData.radius && distSq > 0.04) {
+        if (distSq <= attackData.radius * attackData.radius) {
           hitResult = { hit: true, hitPoint: { x: target.x, y: target.y + 0.5, z: target.z } };
         }
       } else if (attackData.type === 'LINEAR_FISSURE') {
@@ -69,7 +75,7 @@ export class CombatEngine {
         const toTargetX = target.x - orig.x;
         const toTargetZ = target.z - orig.z;
         const projDist = toTargetX * dir.x + toTargetZ * dir.z;
-        if (projDist > 1.2 && projDist <= len) {
+        if (projDist > 0.1 && projDist <= len) {
           const perpDist = Math.abs(toTargetX * (-dir.z) + toTargetZ * dir.x);
           if (perpDist <= width * 0.5) {
             hitResult = { hit: true, hitPoint: { x: target.x, y: target.y + 0.4, z: target.z } };

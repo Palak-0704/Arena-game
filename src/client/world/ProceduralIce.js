@@ -155,7 +155,7 @@ export class ProceduralIce {
 
   // Spawn Authentic Elemental Launch Plank / Ramp (Ability Q)
   // Faithful to reference video: Sleek arched crystalline launch plank with themed elemental materials
-  spawnIceWall(position, forwardDir, isCurved = false, type = 'RAMP', element = 'WATER') {
+  spawnIceWall(position, forwardDir, isCurved = false, type = 'RAMP', element = 'WATER', ownerId = null) {
     const rampGroup = new THREE.Group();
     const length = 7.6;
     const height = 2.3;
@@ -366,6 +366,7 @@ export class ProceduralIce {
     const rampActor = {
       mesh: rampGroup,
       element,
+      ownerId,
       material: surfaceMat,
       frostMat: borderMat,
       mistPlumes,
@@ -464,9 +465,15 @@ export class ProceduralIce {
   }
 
   // Check collision for player surfing/walking on ramps
-  checkRampCollision(playerPos) {
+  // STRICT: Player can only mount/climb their own launch plank, NEVER the opponent's!
+  checkRampCollision(playerPos, playerId = null) {
     for (const ramp of this.activeRamps) {
       if (ramp.collider && (ramp.collider.type === 'CURVED_ICE_RAMP' || ramp.collider.type === 'WEDGE_RAMP')) {
+        // Opponent's ramp cannot be climbed by player!
+        if (ramp.ownerId && playerId && ramp.ownerId !== playerId) {
+          continue;
+        }
+
         const c = ramp.collider;
         const toPlayer = playerPos.clone().sub(c.start);
         const rampVec = c.end.clone().sub(c.start);
@@ -493,6 +500,42 @@ export class ProceduralIce {
                 isAtLaunchLip,
                 rampForward: new THREE.Vector3(dirX, 0, dirZ),
                 ramp: ramp
+              };
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // Physical obstacle collision: opponent's ice ramp / rock plank acts as a solid physical wall
+  checkRampObstacleCollision(playerPos, playerRadius = 0.65, playerId = null) {
+    for (const ramp of this.activeRamps) {
+      if (ramp.collider && (ramp.collider.type === 'CURVED_ICE_RAMP' || ramp.collider.type === 'WEDGE_RAMP')) {
+        // Only block if this ramp belongs to an opponent
+        if (ramp.ownerId && playerId && ramp.ownerId !== playerId) {
+          const c = ramp.collider;
+          const toPlayer = playerPos.clone().sub(c.start);
+          const rampVec = c.end.clone().sub(c.start);
+          const rampLen = Math.hypot(rampVec.x, rampVec.z);
+          if (rampLen < 0.01) continue;
+
+          const dirX = rampVec.x / rampLen;
+          const dirZ = rampVec.z / rampLen;
+          const proj = (toPlayer.x * dirX) + (toPlayer.z * dirZ);
+
+          if (proj >= -playerRadius && proj <= rampLen + playerRadius) {
+            const perpDist = toPlayer.x * (-dirZ) + toPlayer.z * dirX;
+            const absPerp = Math.abs(perpDist);
+            const totalWidth = c.radius + playerRadius;
+            if (absPerp < totalWidth && absPerp > 0.0001) {
+              const sign = perpDist >= 0 ? 1 : -1;
+              const pushDist = totalWidth - absPerp;
+              return {
+                collision: true,
+                pushX: (-dirZ) * sign * pushDist,
+                pushZ: (dirX) * sign * pushDist
               };
             }
           }

@@ -208,7 +208,7 @@ export class BotAI {
       const cdx = this.x - targetPlayer.x;
       const cdz = this.z - targetPlayer.z;
       const cdist = Math.hypot(cdx, cdz);
-      const MIN_DIST = 1.35;
+      const MIN_DIST = 1.45;
       if (cdist < MIN_DIST && cdist > 0.001) {
         const overlap = MIN_DIST - cdist;
         const cnx = cdx / cdist;
